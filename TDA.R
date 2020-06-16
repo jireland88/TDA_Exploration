@@ -8,6 +8,7 @@ train.data  <- ChemicalManufacturingProcess[training.samples,]
 test.data <- ChemicalManufacturingProcess[-training.samples,]
 
 y = train.data$Yield
+ytest = test.data$Yield
 
 pp.missing.data.model <- preProcess(train.data, method="medianImpute")
 train.data <- predict(pp.missing.data.model, train.data)
@@ -71,7 +72,7 @@ library(magrittr)
 
 saveNetwork(network, file = 'Net1.html')
 
-# From graph extract 2 low yield sub-graphs and 2 high yield sub-graphs
+# From graph extract 2 low yield sub-graphs and 2 high yield sub-graphs (same as in paper)
 
 get.data.for.group <- function(group) {
   group.data = as.data.frame(matrix(nrow=0, ncol=dim(train.data)[2]))
@@ -85,13 +86,12 @@ get.data.for.group <- function(group) {
   return(group.data)
 }
 
-H1.data <- get.data.for.group(c(158, 159, 185, 157, 182, 200))
-H2.data <- get.data.for.group(c(59, 58, 60, 61, 20))
-L1.data <- get.data.for.group(c(290, 273, 275, 271, 269, 220))
+H1.data <- get.data.for.group(c(158, 159, 185, 157, 182, 200, 154, 182, 128, 82))
+H2.data <- get.data.for.group(c(59, 58, 60, 61, 20, 84, 22, 20, 24))
+L1.data <- get.data.for.group(c(290, 273, 275, 271, 269, 220, 298, 287, 285))
 L2.data <- get.data.for.group(c(71, 115, 144, 100, 140))
 
-# Now we need to do KS tests between H1/L1, H1/L2, H2/L1, H2/L2.
-
+# Now we need to do KS tests between High and Low yield groups.
 
 results <- as.data.frame(matrix(nrow=n, ncol=2))
 colnames(results) <- c("Feature", "KS")
@@ -107,9 +107,27 @@ for (i in 1:n) {
 results <- results[2:n,]
 
 
-# print features with greater than 0.90 KS score
+# print features with greater than 0.95 KS score
 
-print(results[results$KS >= 0.9,])
+print(results[results$KS >= 0.95,])
 
+# Note similar results to paper on the biological materials, different results on manufacturing process
+# Differences could be due to high correlations between manufacturing process variables
 
+library(dplyr)
+train.data.reduced <- select(train.data, c("Yield", results[results$KS >= 0.95,]$Feature))
 
+lm = train(Yield ~., data=train.data.reduced, method="lm")
+
+# put test data through pipeline
+test.data <- predict(pp.missing.data.model, test.data)
+test.data <- predict(pp.range.model, test.data)
+test.data$Yield <- ytest
+test.data.reduced <- select(test.data, c("Yield", results[results$KS >= 0.95,]$Feature))
+
+p <- predict(lm, test.data)
+
+RMSE(p, test.data$Yield)
+R2(p, test.data.reduced$Yield)
+
+# Very similar results to running with all the features, not as good as using RFE, but was much faster.

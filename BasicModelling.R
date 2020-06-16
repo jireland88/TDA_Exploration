@@ -63,7 +63,7 @@ lm_2 = train(Yield ~., data=train.data.reduced, method="lm")
 test.data <- predict(pp.missing.data.model, test.data)
 test.data <- predict(pp.range.model, test.data)
 test.data <- test.data[,-high.corr.columns]
-test.data$Yield <- y
+test.data$Yield <- ytest
 test.data.reduced <- select(test.data, Yield, ManufacturingProcess32, ManufacturingProcess13, BiologicalMaterial03, ManufacturingProcess17, ManufacturingProcess09)
 
 p1 <- predict(lm_1, test.data)
